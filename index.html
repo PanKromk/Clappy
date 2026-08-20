@@ -222,11 +222,12 @@ h1.title{font-size:5.5rem;background:linear-gradient(180deg,#ff6b6b,#ffd93d,#6bc
 
 <script>
 const CONFIG = {
-  music: { knights: null, friends: null },
-  clap: null,
-  noteIcons: ['\u{1F3B5}','\u{1F3B6}','\u26A1','\u2726','\u2605'],
   noteColors: ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff9ff3'],
   noteColors2: ['#ff6b6b33','#ffd93d33','#6bcb7733','#4d96ff33','#ff9ff333'],
+  noteEmojis: ['\u{1F3B5}','\u{1F3B6}','\u26A1','\u2726','\u2605'],
+  musicFiles: { knights: [], friends: [] },
+  clapFile: null,
+  customIcons: [],
 };
 const SONGS = {
   knights: {
@@ -274,11 +275,44 @@ let customClapBlob=null,customMusic={knights:null,friends:null};
 let previewAudio=null,useCustomMusic=false;
 let repoAudio={knights:null,friends:null,clap:null};
 
+async function probeFile(url){
+  try{const r=await fetch(url,{method:'HEAD'});return r.ok?await fetch(url).then(r=>r.arrayBuffer()):null}catch{return null}
+}
+
 async function loadRepoAudio(){
-  for(const[k,path]of Object.entries(CONFIG.music)){
-    if(path)try{const r=await fetch(path);if(r.ok)repoAudio[k]=await r.arrayBuffer()}catch{}
+  const exts=['mp3','wav','ogg'];
+  for(const[k]of Object.entries(SONGS)){
+    for(const ext of exts){
+      const buf=await probeFile(`sounds/music_${k}.${ext}`);
+      if(buf){repoAudio[k]=buf;break}
+    }
   }
-  if(CONFIG.clap)try{const r=await fetch(CONFIG.clap);if(r.ok)repoAudio.clap=await r.arrayBuffer()}catch{}
+  for(const ext of exts){
+    const buf=await probeFile(`sounds/clap.${ext}`);
+    if(buf){repoAudio.clap=buf;break}
+  }
+}
+
+async function loadCustomIcons(){
+  const exts=['png','jpg','jpeg','webp','svg'];
+  const pool=[];
+  for(let i=0;i<30;i++){
+    for(const ext of exts){
+      try{const r=await fetch(`icons/${i}.${ext}`,{method:'HEAD'});
+        if(r.ok){pool.push(`icons/${i}.${ext}`);break}
+      }catch{}
+    }
+  }
+  CONFIG.customIcons=pool;
+}
+
+function noteIconFor(ci){
+  if(CONFIG.customIcons.length){
+    const total=CONFIG.noteEmojis.length+CONFIG.customIcons.length;
+    const idx=Math.floor(Math.random()*total);
+    if(idx>=CONFIG.noteEmojis.length)return{customIcon:CONFIG.customIcons[idx-CONFIG.noteEmojis.length]};
+  }
+  return{emoji:CONFIG.noteEmojis[ci]};
 }
 
 function pickSong(s){selSong=s;document.querySelectorAll('[data-s]').forEach(c=>c.classList.toggle('sel',c.dataset.s===s))}
@@ -506,7 +540,8 @@ function genGameNotes(){
 
     if(rng()<chance){
       const ci=Math.floor(rng()*CONFIG.noteColors.length);
-      notes.push({timeMs:i*beatMs,hit:false,missed:false,el:null,ci,clap:false});
+      const ic=noteIconFor(ci);
+      notes.push({timeMs:i*beatMs,hit:false,missed:false,el:null,ci,clap:false,customIcon:ic.customIcon||null});
     }
   }
   if(song.clapBreak){
@@ -514,7 +549,7 @@ function genGameNotes(){
     for(let t=interval;t<song.duration;t+=interval){
       const cnt=selDiff==='hard'?8:selDiff==='medium'?6:4;
       const sp=selDiff==='hard'?60:selDiff==='medium'?80:110;
-      for(let c=0;c<cnt;c++)notes.push({timeMs:t+c*sp,hit:false,missed:false,el:null,ci:1,clap:true});
+      for(let c=0;c<cnt;c++)notes.push({timeMs:t+c*sp,hit:false,missed:false,el:null,ci:1,clap:true,customIcon:null});
     }
   }
   notes.sort((a,b)=>a.timeMs-b.timeMs);
@@ -524,7 +559,7 @@ function genGameNotes(){
     el.style.setProperty('--c',n.clap?'#ffd93d':CONFIG.noteColors[n.ci]);
     el.style.setProperty('--c2',n.clap?'#ffd93d33':CONFIG.noteColors2[n.ci]);
     el.style.setProperty('--c4',n.clap?'#ffd93d44':CONFIG.noteColors[n.ci]+'44');
-    el.innerHTML='<div class="ni">'+(n.clap?'\u{1f44f}':CONFIG.noteIcons[n.ci])+'</div>';
+    el.innerHTML='<div class="ni">'+(n.clap?'\u{1f44f}':(n.customIcon?'<img src="'+n.customIcon+'" style="width:100%;height:100%;object-fit:contain;border-radius:8px">':CONFIG.noteEmojis[n.ci]))+'</div>';
     el.style.top='-70px';
     document.querySelector('.game-area').appendChild(el);
     n.el=el;
@@ -549,7 +584,7 @@ function updateNotes(){
 function showFb(text,color){const fb=document.getElementById('fb');fb.textContent=text;fb.style.color=color;fb.style.opacity='1';fb.style.transform='translateX(-50%) scale(1.4)';requestAnimationFrame(()=>{setTimeout(()=>{fb.style.transform='translateX(-50%) scale(1)';setTimeout(()=>fb.style.opacity='0',200)},50)})}
 function spawnFloat(pts,color,big){
   const el=document.createElement('div');el.className='fscore';el.style.color=color;el.textContent='+'+pts;
-  el.style.fontSize=big?'9rem':'6.5rem';
+  el.style.fontSize=big?'6.3rem':'4.5rem';
   const xOff=(Math.random()>.5?1:-1)*(80+Math.random()*180);
   el.style.left=`calc(50% + ${xOff}px)`;
   el.style.bottom=`${300+Math.random()*200}px`;
@@ -807,6 +842,7 @@ async function resetMusic(key){customMusic[key]=null;await dbDel('music_'+key);u
   try{const v=JSON.parse(localStorage.getItem('clappy_vol'));if(v){document.getElementById('volMaster').value=v.m;document.getElementById('volMusic').value=v.mu;document.getElementById('volSfx').value=v.s;updateVol()}}catch{}
   loadCustomSounds();
   loadRepoAudio();
+  loadCustomIcons();
 })();
 
 const ss=document.createElement('style');
