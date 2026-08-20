@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clappy - Standing Ovation Society</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a1a;
+    color: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  }
+
+  #start-screen {
+    text-align: center;
+    animation: fadeIn 1s ease;
+  }
+
+  #start-screen h1 {
+    font-size: 4rem;
+    background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientShift 3s ease infinite;
+    margin-bottom: 0.3rem;
+  }
+
+  #start-screen .guild {
+    font-size: 1.2rem;
+    color: #aaa;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+
+  #start-screen .instructions {
+    color: #888;
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .btn {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    border: none;
+    color: #fff;
+    padding: 16px 48px;
+    font-size: 1.3rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
+  }
+
+  .btn:hover { transform: scale(1.05); box-shadow: 0 6px 30px rgba(255, 107, 107, 0.6); }
+  .btn:active { transform: scale(0.97); }
+
+  #game-screen { display: none; text-align: center; width: 100%; height: 100vh; position: relative; }
+
+  #score-bar {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-around;
+    font-size: 1.1rem;
+    z-index: 10;
+  }
+
+  #score-bar .label { color: #888; font-size: 0.8rem; }
+  #score-bar .value { font-size: 1.5rem; font-weight: bold; }
+
+  #hit-zone {
+    position: absolute;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.1s, background 0.1s;
+  }
+
+  #hit-zone.flash {
+    border-color: #ffd93d;
+    background: rgba(255, 217, 61, 0.15);
+  }
+
+  #hit-zone .emoji {
+    font-size: 4rem;
+    transition: transform 0.1s;
+  }
+
+  #hit-zone.pop .emoji { transform: scale(1.4); }
+
+  .note {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    animation: none;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  #feedback {
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2rem;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  }
+
+  #combo-display {
+    position: absolute;
+    bottom: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1rem;
+    color: #ffd93d;
+    opacity: 0;
+    z-index: 10;
+  }
+
+  #progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77);
+    transition: width 0.1s linear;
+    z-index: 10;
+  }
+
+  #end-screen {
+    display: none;
+    text-align: center;
+    animation: fadeIn 0.5s ease;
+  }
+
+  #end-screen h2 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+
+  #end-screen .final-score {
+    font-size: 4rem;
+    font-weight: bold;
+    background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 1rem;
+  }
+
+  #end-screen .stats {
+    color: #aaa;
+    font-size: 1rem;
+    margin-bottom: 0.3rem;
+  }
+
+  #end-screen .grade {
+    font-size: 5rem;
+    margin: 1rem 0;
+  }
+
+  .particles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes gradientShift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+</style>
+</head>
+<body>
+
+<div id="start-screen">
+  <h1>CLAPPY</h1>
+  <div class="guild">Standing Ovation Society</div>
+  <div class="instructions">Press SPACE to clap along with the beat!</div>
+  <button class="btn" id="start-btn">Start</button>
+</div>
+
+<div id="game-screen">
+  <div id="score-bar">
+    <div><div class="label">SCORE</div><div class="value" id="score">0</div></div>
+    <div><div class="label">COMBO</div><div class="value" id="combo">0</div></div>
+    <div><div class="label">ACCURACY</div><div class="value" id="accuracy">100%</div></div>
+  </div>
+  <div class="particles" id="particles"></div>
+  <div id="hit-zone"><div class="emoji">👏</div></div>
+  <div id="feedback"></div>
+  <div id="combo-display"></div>
+  <div id="progress-bar"></div>
+</div>
+
+<div id="end-screen">
+  <div class="grade" id="grade"></div>
+  <h2>Standing Ovation!</h2>
+  <div class="final-score" id="final-score"></div>
+  <div class="stats" id="stat-perfect">Perfect: 0</div>
+  <div class="stats" id="stat-great">Great: 0</div>
+  <div class="stats" id="stat-good">Good: 0</div>
+  <div class="stats" id="stat-miss">Miss: 0</div>
+  <div class="stats" id="stat-combo">Best Combo: 0</div>
+  <br>
+  <button class="btn" id="retry-btn">Play Again</button>
+</div>
+
+<script>
+const BPM = 120;
+const BEAT_MS = 60000 / BPM;
+const NOTE_TRAVEL = 2000;
+const HIT_WINDOW_PERFECT = 60;
+const HIT_WINDOW_GREAT = 120;
+const HIT_WINDOW_GOOD = 200;
+
+let audioCtx, gainNode;
+let scoreVal = 0, comboVal = 0, bestCombo = 0;
+let hits = { perfect: 0, great: 0, good: 0, miss: 0 };
+let totalNotes = 0, notesHit = 0;
+let notes = [];
+let gameRunning = false;
+let startTime = 0;
+let songLength = 32000;
+let animFrame;
+
+const songPattern = [
+  1,0,1,0, 1,0,0,1, 1,0,1,0, 0,1,1,0,
+  1,0,1,1, 1,0,1,0, 1,1,0,1, 1,0,1,0,
+  0,1,0,1, 1,0,1,0, 1,0,1,1, 0,1,0,1,
+  1,0,0,1, 1,1,0,0, 1,0,1,0, 0,1,1,1,
+  1,0,1,0, 1,0,1,0, 1,1,1,0, 0,1,0,1,
+  1,0,0,1, 0,1,1,0, 1,1,0,1, 0,0,1,1,
+  1,0,1,1, 1,0,1,0, 0,1,1,0, 1,0,1,1,
+  1,1,0,0, 1,0,1,1, 1,0,1,0, 1,1,0,1,
+];
+
+const noteEmojis = ['👏', '🎵', '🎶', '✨', '💥'];
+const noteColors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff9ff3'];
+
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  gainNode = audioCtx.createGain();
+  gainNode.gain.value = 0.3;
+  gainNode.connect(audioCtx.destination);
+}
+
+function playBeat(time) {
+  const osc = audioCtx.createOscillator();
+  const env = audioCtx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = 220 + Math.random() * 60;
+  env.gain.setValueAtTime(0.5, time);
+  env.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+  osc.connect(env);
+  env.connect(gainNode);
+  osc.start(time);
+  osc.stop(time + 0.15);
+}
+
+function playClapSound(time) {
+  const bufferSize = audioCtx.sampleRate * 0.08;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 3);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buffer;
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'bandpass';
+  filt.frequency.value = 2000;
+  filt.Q.value = 0.8;
+  src.connect(filt);
+  filt.connect(gainNode);
+  src.start(time);
+}
+
+function playMissSound(time) {
+  const osc = audioCtx.createOscillator();
+  const env = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 120;
+  env.gain.setValueAtTime(0.2, time);
+  env.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+  osc.connect(env);
+  env.connect(gainNode);
+  osc.start(time);
+  osc.stop(time + 0.12);
+}
+
+function playBassLine() {
+  const bassNotes = [110, 110, 146.83, 130.81, 110, 110, 164.81, 146.83];
+  const beatCount = Math.ceil(songLength / BEAT_MS);
+  for (let i = 0; i < beatCount; i++) {
+    const t = audioCtx.currentTime + (i * BEAT_MS / 1000);
+    const freq = bassNotes[i % bassNotes.length];
+    const osc = audioCtx.createOscillator();
+    const env = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    env.gain.setValueAtTime(0.15, t);
+    env.gain.exponentialRampToValueAtTime(0.001, t + BEAT_MS / 1000 * 0.8);
+    osc.connect(env);
+    env.connect(gainNode);
+    osc.start(t);
+    osc.stop(t + BEAT_MS / 1000 * 0.9);
+  }
+}
+
+function scheduleBeats() {
+  const beatCount = Math.ceil(songLength / BEAT_MS);
+  for (let i = 0; i < beatCount; i++) {
+    setTimeout(() => playBeat(), i * BEAT_MS);
+  }
+  playBassLine();
+}
+
+function spawnNotes() {
+  const patternLen = songPattern.length;
+  const totalBeats = Math.ceil(songLength / BEAT_MS);
+
+  for (let i = 0; i < totalBeats; i++) {
+    if (songPattern[i % patternLen] === 1) {
+      totalNotes++;
+      const note = {
+        beatTime: i * BEAT_MS,
+        hit: false,
+        missed: false,
+        el: null,
+        emoji: noteEmojis[Math.floor(Math.random() * noteEmojis.length)],
+        color: noteColors[Math.floor(Math.random() * noteColors.length)],
+        lane: Math.random() * 200 - 100,
+      };
+
+      const el = document.createElement('div');
+      el.className = 'note';
+      el.textContent = note.emoji;
+      el.style.background = note.color + '33';
+      el.style.border = '2px solid ' + note.color;
+      el.style.left = '50%';
+      el.style.bottom = '-60px';
+      document.getElementById('game-screen').appendChild(el);
+      note.el = el;
+      notes.push(note);
+    }
+  }
+}
+
+function updateNotes() {
+  const elapsed = performance.now() - startTime;
+
+  for (const note of notes) {
+    if (note.hit || note.missed) continue;
+
+    const noteTargetTime = note.beatTime;
+    const timeUntilHit = noteTargetTime - elapsed;
+
+    if (timeUntilHit < -HIT_WINDOW_GOOD) {
+      note.missed = true;
+      onMiss();
+      note.el.style.opacity = '0.2';
+      continue;
+    }
+
+    const progress = 1 - (timeUntilHit / NOTE_TRAVEL);
+    const bottomPos = progress * (window.innerHeight * 0.88 - 120);
+
+    note.el.style.bottom = bottomPos + 'px';
+    note.el.style.transform = `translateX(${note.lane * (1 - progress)}px)`;
+    note.el.style.opacity = Math.min(1, progress * 2);
+  }
+}
+
+function showFeedback(text, color) {
+  const fb = document.getElementById('feedback');
+  fb.textContent = text;
+  fb.style.color = color;
+  fb.style.opacity = '1';
+  fb.style.transform = 'translateX(-50%) scale(1.2)';
+  setTimeout(() => { fb.style.opacity = '0'; fb.style.transform = 'translateX(-50%) scale(1)'; }, 300);
+}
+
+function spawnParticles() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.style.cssText = `
+      position:absolute;
+      left:50%;bottom:200px;
+      width:6px;height:6px;
+      border-radius:50%;
+      background:${['#ff6b6b','#ffd93d','#6bcb77','#4d96ff'][i%4]};
+      pointer-events:none;
+      animation: particleFly 0.6s ease-out forwards;
+    `;
+    const angle = (Math.PI * 2 / 8) * i + Math.random() * 0.5;
+    const dist = 60 + Math.random() * 80;
+    p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--dy', Math.sin(angle) * dist - 40 + 'px');
+    container.appendChild(p);
+    setTimeout(() => p.remove(), 600);
+  }
+}
+
+function flashHitZone() {
+  const hz = document.getElementById('hit-zone');
+  hz.classList.add('flash', 'pop');
+  setTimeout(() => hz.classList.remove('flash', 'pop'), 150);
+}
+
+function onClap() {
+  if (!gameRunning) return;
+
+  const elapsed = performance.now() - startTime;
+  playClapSound(audioCtx.currentTime);
+  flashHitZone();
+  spawnParticles();
+
+  let bestNote = null;
+  let bestDiff = Infinity;
+
+  for (const note of notes) {
+    if (note.hit || note.missed) continue;
+    const diff = Math.abs(elapsed - note.beatTime);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestNote = note;
+    }
+  }
+
+  if (bestNote && bestDiff <= HIT_WINDOW_GOOD) {
+    bestNote.hit = true;
+    notesHit++;
+    comboVal++;
+    if (comboVal > bestCombo) bestCombo = comboVal;
+
+    const comboBonus = Math.floor(comboVal / 10) * 5;
+
+    if (bestDiff <= HIT_WINDOW_PERFECT) {
+      hits.perfect++;
+      scoreVal += 100 + comboBonus;
+      showFeedback('PERFECT!', '#ffd93d');
+    } else if (bestDiff <= HIT_WINDOW_GREAT) {
+      hits.great++;
+      scoreVal += 70 + comboBonus;
+      showFeedback('GREAT!', '#6bcb77');
+    } else {
+      hits.good++;
+      scoreVal += 40 + comboBonus;
+      showFeedback('GOOD', '#4d96ff');
+    }
+
+    bestNote.el.style.transition = 'transform 0.2s, opacity 0.2s';
+    bestNote.el.style.transform = 'scale(2)';
+    bestNote.el.style.opacity = '0';
+    setTimeout(() => bestNote.el.remove(), 200);
+  } else {
+    if (comboVal > 0) {
+      playMissSound(audioCtx.currentTime);
+    }
+    comboVal = 0;
+    showFeedback('MISS', '#ff4757');
+  }
+
+  updateUI();
+}
+
+function onMiss() {
+  hits.miss++;
+  comboVal = 0;
+  updateUI();
+}
+
+function updateUI() {
+  document.getElementById('score').textContent = scoreVal.toLocaleString();
+  document.getElementById('combo').textContent = comboVal;
+
+  const total = hits.perfect + hits.great + hits.good + hits.miss;
+  const acc = total > 0 ? Math.round((hits.perfect * 100 + hits.great * 70 + hits.good * 40) / total) : 100;
+  document.getElementById('accuracy').textContent = acc + '%';
+
+  const comboDisplay = document.getElementById('combo-display');
+  if (comboVal >= 5) {
+    comboDisplay.textContent = `${comboVal}x COMBO`;
+    comboDisplay.style.opacity = '1';
+  } else {
+    comboDisplay.style.opacity = '0';
+  }
+}
+
+function endGame() {
+  gameRunning = false;
+  cancelAnimationFrame(animFrame);
+
+  const total = hits.perfect + hits.great + hits.good + hits.miss;
+  const acc = total > 0 ? Math.round((hits.perfect * 100 + hits.great * 70 + hits.good * 40) / total) : 0;
+
+  let grade = '🎵';
+  if (acc >= 95) grade = '👑';
+  else if (acc >= 85) grade = '🌟';
+  else if (acc >= 70) grade = '👏';
+  else if (acc >= 50) grade = '🎶';
+
+  document.getElementById('grade').textContent = grade;
+  document.getElementById('final-score').textContent = scoreVal.toLocaleString();
+  document.getElementById('stat-perfect').textContent = 'Perfect: ' + hits.perfect;
+  document.getElementById('stat-great').textContent = 'Great: ' + hits.great;
+  document.getElementById('stat-good').textContent = 'Good: ' + hits.good;
+  document.getElementById('stat-miss').textContent = 'Miss: ' + hits.miss;
+  document.getElementById('stat-combo').textContent = 'Best Combo: ' + bestCombo;
+
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display = 'block';
+}
+
+function gameLoop() {
+  if (!gameRunning) return;
+  updateNotes();
+
+  const elapsed = performance.now() - startTime;
+  const progress = Math.min(elapsed / songLength, 1);
+  document.getElementById('progress-bar').style.width = (progress * 100) + '%';
+
+  if (elapsed >= songLength + 1000) {
+    endGame();
+    return;
+  }
+
+  animFrame = requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+  initAudio();
+  scoreVal = 0; comboVal = 0; bestCombo = 0;
+  hits = { perfect: 0, great: 0, good: 0, miss: 0 };
+  totalNotes = 0; notesHit = 0;
+  notes = [];
+
+  document.querySelectorAll('.note').forEach(n => n.remove());
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'block';
+  updateUI();
+
+  spawnNotes();
+  startTime = performance.now() + 500;
+  gameRunning = true;
+
+  setTimeout(() => {
+    scheduleBeats();
+    animFrame = requestAnimationFrame(gameLoop);
+  }, 500);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    onClap();
+  }
+});
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('retry-btn').addEventListener('click', startGame);
+
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+  @keyframes particleFly {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+  }
+`;
+document.head.appendChild(styleSheet);
+</script>
+
+</body>
+</html>
